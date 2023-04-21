@@ -25,3 +25,20 @@ for p in range(1, 30):
     all_links = list(soup.find_all('a'))
     for link_j in soup.select("a[id*='el-']"):
         desired_links.append(link_j['id'].split('-')[1])
+
+
+# Define skills list
+skills = []
+
+# Get job link by job id and reload driver
+for job_id in desired_links:
+    job_link = 'https://jobvision.ir/jobs/'+job_id
+    driver.get(job_link)
+    # Find skills in span in divs with requirement-value class
+    html = driver.page_source
+    soup = BeautifulSoup(html, 'html.parser')
+    x = soup.find_all('div', {'class': "requirement-value bg-light py-2 px-3"})
+    for div in x:
+        spans = div.find_all('span', {'class': "tag-title font-weight-bold"})
+        for span in spans:
+            skills.append(span.text)
