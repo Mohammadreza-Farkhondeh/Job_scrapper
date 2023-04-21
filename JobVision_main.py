@@ -1,9 +1,7 @@
 # Import libraries
-import time
-import requests
 from bs4 import BeautifulSoup
-import re
 from selenium import webdriver
+import pandas
 
 # Define main url and driver
 main_url = 'https://jobvision.ir/jobs/category/developer?page='
@@ -52,4 +50,14 @@ for skill in skills:
         DATA[skill] += 1
     else:
         DATA[skill] = 1
-        
+print(DATA)
+# Sort DATA by repetition
+Sorted_DATA = {}
+sorted_list = sorted(DATA.items(), key=lambda item: int(item[1]), reverse=True)
+print(sorted_list)
+for i in sorted_list:
+    Sorted_DATA.update({i[0]: i[1]})
+
+
+# Export DATA to excel file
+pandas.DataFrame(Sorted_DATA, index=[0]).T.to_csv('JOB_DATA.csv')
