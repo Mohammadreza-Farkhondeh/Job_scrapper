@@ -13,7 +13,7 @@ driver = webdriver.Chrome()
 desired_links = []
 
 # Get jobs in pages first to 30th
-for p in range(1, 30):
+for p in range(1, 2):
     # Get page url to driver and make soup
     page_url = main_url + str(p)
     driver.get(page_url)
@@ -42,3 +42,14 @@ for job_id in desired_links:
         spans = div.find_all('span', {'class': "tag-title font-weight-bold"})
         for span in spans:
             skills.append(span.text)
+
+# Define most valuable variable DATA
+DATA = {}
+
+# Enrol skills to DATA dict
+for skill in skills:
+    if skill in DATA:
+        DATA[skill] += 1
+    else:
+        DATA[skill] = 1
+        
