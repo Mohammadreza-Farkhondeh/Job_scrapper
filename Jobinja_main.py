@@ -18,10 +18,10 @@ class Page:
 
     # Define the scrape method
     def scrape(self):
-        # Change user agent to firefox because pythonrequests is blocked
+        # Change user agent to firefox because python-requests is blocked by jobinja
         headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/113.0'}
         # Get the page by request
-        page = requests.get(self.url, headers=headers, timeout=1)
+        page = requests.get(self.url, headers=headers)
         # Get the HTML page source
         html = page.text
         # Parse the HTML content using Beautiful Soup
@@ -45,7 +45,14 @@ class JobPage(Page):
         # Call the parent scrape method and get the soup object
         soup = self.scrape()
         # Extract the text from the <div> element with class="jobDescription"
-        text = soup.find("div", class_="o-box__text s-jobDesc c-pr40p").get_text()
+        # Make sure to not fail in first try
+        div = soup.find("div", class_="o-box__text s-jobDesc c-pr40p")
+        if div:
+            text = div.get_text()
+        else:
+            soup = self.scrape()
+            div = soup.find("div", class_="o-box__text s-jobDesc c-pr40p")
+            text = div.get_text()
         # Assign the text to the Text object's content attribute
         self.text.content = text
 
