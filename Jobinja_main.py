@@ -1,13 +1,11 @@
 # Import libraries
-import requests
 from bs4 import BeautifulSoup
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import string
+import requests
 from collections import Counter
-from selenium import webdriver
-
 
 
 # Define the Page class
@@ -20,12 +18,14 @@ class Page:
 
     # Define the scrape method
     def scrape(self):
-        # Get the page in selenium firefox webDriver
-        driver.get(self.url)
+        # Change user agent to firefox because pythonrequests is blocked
+        headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/113.0'}
+        # Get the page by request
+        page = requests.get(self.url, headers=headers, timeout=1)
         # Get the HTML page source
-        page = driver.page_source
+        html = page.text
         # Parse the HTML content using Beautiful Soup
-        soup = BeautifulSoup(page, "html.parser")
+        soup = BeautifulSoup(html, "html.parser")
         # Return the soup object
         return soup
 
@@ -65,7 +65,7 @@ class JobListPage(Page):
         # Call the parent scrape method and get the soup object
         soup = self.scrape()
         # Find all the <a> elements with class="jobTitle"
-        links = soup.find_all("a", {"class" : "c-jobListView__titleLink"})
+        links = soup.find_all("a", {"class": "c-jobListView__titleLink"})
         # Loop through each link element
         for link in links:
             # Get the href attribute of the <a> element
@@ -125,28 +125,36 @@ class Text:
         return self.freq.most_common(n)
 
 
+def get_most_common_freq(n):
+    if n == '*':
+        return global_freq
+    elif type(n) is int:
+        return global_freq.most_common(n)
+
+
 # ----------------------------------------------------------------
+
 
 JobListPage_URL = 'https://jobinja.ir/jobs/category/it-software-web-development-jobs/' \
                   '%D8%A7%D8%B3%D8%AA%D8%AE%D8%AF%D8%A7%D9%85-%D9%88%D8%A8-%D8%A8%D8%B1%D9%86%D8%A7%D9%85%D9%87-' \
                   '%D9%86%D9%88%DB%8C%D8%B3-%D9%86%D8%B1%D9%85-%D8%A7%D9%81%D8%B2%D8%A7%D8%B1?&page='
 global_freq = Counter()
-driver = webdriver.Firefox(capabilities={"marionette": True})
-try:
+
+try:  # Get the  pages and frequencies
     for i in range(1, 3):
         try:
-            URL = JobListPage_URL + str(i)
+            URL = JobListPage_URL + str(i)  # Add page number to URL
             job_list_page = JobListPage(URL)
             job_list_page.extract_links()
         except Exception as error:
             # handle the error
             print(error)
-        for job_page in job_list_page.jobs:
+
+        for job_page in job_list_page.jobs:  # Get the words and frequencies in job_page
             try:
                 # job_page = JobPage(job_link)
                 job_page.extract_text()
                 job_page.text.process_text()
-                print(job_page.text.get_keywords(6))
 
             except Exception as error:
                 # handle the error
@@ -155,4 +163,3 @@ try:
 except Exception as error:
     # handle the error
     print(error)
-print(global_freq.most_common(16))
