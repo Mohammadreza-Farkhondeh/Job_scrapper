@@ -133,19 +133,26 @@ JobListPage_URL = 'https://jobinja.ir/jobs/category/it-software-web-development-
 global_freq = Counter()
 driver = webdriver.Firefox(capabilities={"marionette": True})
 try:
-    for i in range(1,180):
+    for i in range(1, 3):
         try:
             URL = JobListPage_URL + str(i)
             job_list_page = JobListPage(URL)
             job_list_page.extract_links()
-        except:
-            print('Fail!')
+        except Exception as error:
+            # handle the error
+            print(error)
         for job_page in job_list_page.jobs:
             try:
                 # job_page = JobPage(job_link)
                 job_page.extract_text()
                 job_page.text.process_text()
-            except:
-                print('Fail!')
-except:
-    print('Failed!')
+                print(job_page.text.get_keywords(6))
+
+            except Exception as error:
+                # handle the error
+                print(error)
+
+except Exception as error:
+    # handle the error
+    print(error)
+print(global_freq.most_common(16))
