@@ -1,11 +1,12 @@
 # Import libraries
 from bs4 import BeautifulSoup
-import nltk
+from nltk import FreqDist
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import string
 import requests
 from collections import Counter
+import my_word_cloud
 
 
 # Define the Page class
@@ -44,15 +45,17 @@ class JobPage(Page):
     def extract_text(self):
         # Call the parent scrape method and get the soup object
         soup = self.scrape()
-        # Extract the text from the <div> element with class="jobDescription"
+        # Extract the text from the <div> element with class="..." this class is for persian texts
         # Make sure to not fail in first try
         div = soup.find("div", class_="o-box__text s-jobDesc c-pr40p")
+        # checking the div to not be None(if the content is english, class is differnt)
         if div:
-            text = div.get_text()
+            pass
         else:
-            soup = self.scrape()
-            div = soup.find("div", class_="o-box__text s-jobDesc c-pr40p")
-            text = div.get_text()
+            # finding new div
+            div = soup.find("div", class_="o-box__text s-jobDesc u-ltr c-pl40p")
+
+        text = div.get_text()
         # Assign the text to the Text object's content attribute
         self.text.content = text
 
@@ -119,12 +122,13 @@ class Text:
                       'انجام', 'حتی', 'داده', 'راه', 'سوی', 'ولی', 'زمان', 'حال', 'تنها', 'بسیار', 'یعنی', 'عنوان',
                       'پیش', 'وی', 'یکی', 'اینکه', 'وجود', 'شما', 'پس', 'چنین', 'میان', 'مورد', 'چه', 'اگر', 'همه',
                       'نه', 'دیگر', 'آنها', 'باید', 'هر', 'او', 'ما', 'من', 'تا', 'نیز', 'اما', 'یک', 'خود', 'بر', 'از',
-                      'یا', 'هم', 'را', 'این', 'با', 'آن', 'برای', 'و', 'در', 'به', 'که', 'هیچ', 'همین', 'هبچ', 'چیز'] \
+                      'یا', 'هم', 'را', 'این', 'با', 'آن', 'برای', 'و', 'در', 'به', 'که', 'هیچ', 'همین', 'هبچ', 'چیز',
+                      'های','باشد', 'داشته', 'است', 'شده', 'ای', 'کردن', 'سال', 'می', 'میباشد'] \
                         + stopwords.words("english") + \
                         list(string.punctuation) + ["’", "“", "”"]
         words = [word for word in words if word not in stop_words and word.isalpha()]
         # Calculate the frequency of each word using NLTK FreqDist and assign it to the freq attribute
-        self.freq = nltk.FreqDist(words)
+        self.freq = FreqDist(words)
         global_freq.update(self.freq)
 
     # Define the get_keywords method that returns the top n most frequent words as keywords
@@ -133,7 +137,7 @@ class Text:
 
 
 def get_most_common_freq(n):
-    if n == '*':
+    if n == 'all':
         return global_freq
     elif type(n) is int:
         return global_freq.most_common(n)
@@ -141,6 +145,7 @@ def get_most_common_freq(n):
 
 # ----------------------------------------------------------------
 
+counter_for_for = 0
 
 JobListPage_URL = 'https://jobinja.ir/jobs/category/it-software-web-development-jobs/' \
                   '%D8%A7%D8%B3%D8%AA%D8%AE%D8%AF%D8%A7%D9%85-%D9%88%D8%A8-%D8%A8%D8%B1%D9%86%D8%A7%D9%85%D9%87-' \
@@ -148,7 +153,7 @@ JobListPage_URL = 'https://jobinja.ir/jobs/category/it-software-web-development-
 global_freq = Counter()
 
 try:  # Get the  pages and frequencies
-    for i in range(1, 3):
+    for i in range(1, 191):
         try:
             URL = JobListPage_URL + str(i)  # Add page number to URL
             job_list_page = JobListPage(URL)
@@ -161,7 +166,10 @@ try:  # Get the  pages and frequencies
             try:
                 # job_page = JobPage(job_link)
                 job_page.extract_text()
+                counter_for_for += 1
                 job_page.text.process_text()
+                print('counter_for_for:', counter_for_for)
+                print(job_page.text.freq.most_common(2))
 
             except Exception as error:
                 # handle the error
@@ -170,3 +178,18 @@ try:  # Get the  pages and frequencies
 except Exception as error:
     # handle the error
     print(error)
+
+
+# ----------------------------------------------------------------
+
+if __name__ == '__main__':
+
+    # Get the all words
+    word_dict = dict(get_most_common_freq('all'))
+    # Filter english words and persians
+    eng_words_dict, persian_words_dict = my_word_cloud.filter_eng_fa(word_dict)
+
+    # Get plots
+    my_word_cloud.draw_fa_en_word_cloud(persian_words_dict)
+    my_word_cloud.draw_fa_en_word_cloud(eng_words_dict)
+    my_word_cloud.draw_only_en_word_cloud(eng_words_dict)
