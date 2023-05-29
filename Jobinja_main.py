@@ -7,6 +7,7 @@ import string
 import requests
 from collections import Counter
 import my_word_cloud
+import pandas
 
 
 # Define the Page class
@@ -59,6 +60,23 @@ class JobPage(Page):
         # Assign the text to the Text object's content attribute
         self.text.content = text
 
+    # Define the get skill method
+    def get_skill_tags(self):
+        # Call the parent scrape method and get the soup object
+        soup = self.scrape()
+        # Find all li item with specified class to find skill spans not gender and diploma
+        lis = soup.find_all('li', {'class': "c-infoBox__item"})
+        for li in lis:
+            if li.find('h4').text == 'مهارت‌های مورد نیاز':  # If li was about skills, then find spans inside
+                spans = li.find_all('span', {'class': 'black'})
+
+        # Define skills list and append found spans to it
+        skills = []
+        for span in spans:
+            skills.append(span.text)
+
+        return skills
+
 
 # Define the JobListPage class that inherits from Page
 class JobListPage(Page):
@@ -97,7 +115,7 @@ class Text:
         self.freq = Counter()
 
     # Define the process_text method
-    def process_text(self):
+    def process_text(self, method):
         # Tokenize the content into words using NLTK
         words = word_tokenize(self.content)
         # Remove stopwords, punctuation, and numbers from the words
@@ -123,17 +141,58 @@ class Text:
                       'پیش', 'وی', 'یکی', 'اینکه', 'وجود', 'شما', 'پس', 'چنین', 'میان', 'مورد', 'چه', 'اگر', 'همه',
                       'نه', 'دیگر', 'آنها', 'باید', 'هر', 'او', 'ما', 'من', 'تا', 'نیز', 'اما', 'یک', 'خود', 'بر', 'از',
                       'یا', 'هم', 'را', 'این', 'با', 'آن', 'برای', 'و', 'در', 'به', 'که', 'هیچ', 'همین', 'هبچ', 'چیز',
-                      'های','باشد', 'داشته', 'است', 'شده', 'ای', 'کردن', 'سال', 'می', 'میباشد'] \
-                        + stopwords.words("english") + \
+                      'های','باشد', 'داشته', 'است', 'شده', 'ای', 'کردن', 'سال', 'می', 'میباشد', 'باشی', 'هاي', 'رو', 'مي'] \
+                        + ['well', 'related', 'providing', 'like', 'skilled', 'a', 'technical', 'an', 'knowledge', 'you',
+                           'take', 'product', 'team', 'teams', 'the', 'building', 'new', 'ideal', 'identify', 'strong'
+                           'role', 'technology', 'provideing', 'join', 'best', 'tools', 'technical', 'emerging',
+                           'existing', 'part', 'work', 'joining', 'looking', 'able', 'create', 'let','candidate',
+                           'debugging', 'user', 'career', 'working', 'seeking', 'closely', 'standards','written',
+                           'following','passion', 'creating', 'ability', 'project', 'skills', 'modern', 'way', 'us'] \
+                        + list(stopwords.words("english")) + \
                         list(string.punctuation) + ["’", "“", "”"]
-        words = [word for word in words if word not in stop_words and word.isalpha()]
-        # Calculate the frequency of each word using NLTK FreqDist and assign it to the freq attribute
-        self.freq = FreqDist(words)
+        words = [str(word.lower()) for word in words if word.lower() not in stop_words and word.isalpha()]
+
+        # There is two method one get you number of repetitions, one get only existence of words
+        if method == 1:
+            # Calculate the frequency of each word using NLTK FreqDist and assign it to the freq attribute
+            self.freq = FreqDist(words)
+
+        elif method == 2:
+            # Create an empty set and an empty dictionary
+            seen = set()
+            self.freq = Counter()
+            # Loop through the words and assign a frequency of 1 to the new words
+            for word in words:
+                if word not in seen:
+                    seen.add(word)
+                    self.freq[word] = 1
+
+        # Update the global_freq with the local freq
         global_freq.update(self.freq)
 
     # Define the get_keywords method that returns the top n most frequent words as keywords
     def get_keywords(self, n):
         return self.freq.most_common(n)
+
+
+def get_tags_to_DATA(skills):
+    # Append skills number to DATA
+    for skill in skills:
+        if skill in DATA:
+            DATA[skill] += 1
+        else:
+            DATA[skill] = 1
+
+
+def export_tags():
+    # Sort Data
+    Sorted_DATA = {}
+    sorted_list = sorted(DATA.items(), key=lambda item: int(item[1]), reverse=True)
+    for i in sorted_list:
+        Sorted_DATA.update({i[0]: i[1]})
+
+    # Export DATA to excel file
+    pandas.DataFrame(Sorted_DATA, index=[0]).T.to_csv('JOB_DATA_Jobinja.csv')
 
 
 def get_most_common_freq(n):
@@ -143,53 +202,55 @@ def get_most_common_freq(n):
         return global_freq.most_common(n)
 
 
-# ----------------------------------------------------------------
+def main():
+    JobListPage_URL = 'https://jobinja.ir/jobs/category/it-software-web-development-jobs/' \
+                      '%D8%A7%D8%B3%D8%AA%D8%AE%D8%AF%D8%A7%D9%85-%D9%88%D8%A8-%D8%A8%D8%B1%D9%86%D8%A7%D9%85%D9%87-' \
+                      '%D9%86%D9%88%DB%8C%D8%B3-%D9%86%D8%B1%D9%85-%D8%A7%D9%81%D8%B2%D8%A7%D8%B1?&page='
+    global DATA
+    DATA = {}
+    page = 1
+    global global_freq
+    global_freq = Counter()
 
-counter_for_for = 0
-
-JobListPage_URL = 'https://jobinja.ir/jobs/category/it-software-web-development-jobs/' \
-                  '%D8%A7%D8%B3%D8%AA%D8%AE%D8%AF%D8%A7%D9%85-%D9%88%D8%A8-%D8%A8%D8%B1%D9%86%D8%A7%D9%85%D9%87-' \
-                  '%D9%86%D9%88%DB%8C%D8%B3-%D9%86%D8%B1%D9%85-%D8%A7%D9%81%D8%B2%D8%A7%D8%B1?&page='
-global_freq = Counter()
-
-try:  # Get the  pages and frequencies
-    for i in range(1, 191):
-        try:
-            URL = JobListPage_URL + str(i)  # Add page number to URL
-            job_list_page = JobListPage(URL)
-            job_list_page.extract_links()
-        except Exception as error:
-            # handle the error
-            print(error)
-
-        for job_page in job_list_page.jobs:  # Get the words and frequencies in job_page
+    try:  # Get the  pages and frequencies
+        for i in range(1, 199):
             try:
-                # job_page = JobPage(job_link)
-                job_page.extract_text()
-                counter_for_for += 1
-                job_page.text.process_text()
-                print('counter_for_for:', counter_for_for)
-                print(job_page.text.freq.most_common(2))
-
+                URL = JobListPage_URL + str(i)  # Add page number to URL
+                job_list_page = JobListPage(URL)
+                job_list_page.extract_links()
             except Exception as error:
                 # handle the error
                 print(error)
 
-except Exception as error:
-    # handle the error
-    print(error)
+            for job_page in job_list_page.jobs:  # Get the words and frequencies in job_page
+                try:
+                    job_page.extract_text()
+                    job_page.text.process_text(2)
+                    skills = job_page.get_skill_tags()
+                    get_tags_to_DATA(skills)
+                    print(page)
+                    page += 1
+                except Exception as error:
+                    # handle the error
+                    print(error)
+
+    except Exception as error:
+        # handle the error
+        print(error)
 
 
-# ----------------------------------------------------------------
-
-if __name__ == '__main__':
-
+def get_word_clouds():
     # Get the all words
     word_dict = dict(get_most_common_freq('all'))
     # Filter english words and persians
     eng_words_dict, persian_words_dict = my_word_cloud.filter_eng_fa(word_dict)
-
-    # Get plots
     my_word_cloud.draw_fa_en_word_cloud(persian_words_dict)
     my_word_cloud.draw_fa_en_word_cloud(eng_words_dict)
     my_word_cloud.draw_only_en_word_cloud(eng_words_dict)
+
+
+if __name__ == '__main__':
+    print('Running...')
+    main()
+    get_word_clouds()
+    export_tags()
